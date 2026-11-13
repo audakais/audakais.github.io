@@ -36,6 +36,7 @@
   $("plist").innerHTML = P.map((p, i) => {
     const links = [
       p.demo && `<a href="${esc(p.demo)}" target="_blank" rel="noopener">live ↗</a>`,
+      p.paper && `<a href="${esc(p.paper)}" target="_blank" rel="noopener">paper ↗</a>`,
       p.github && `<a href="${esc(p.github)}" target="_blank" rel="noopener">code ↗</a>`,
     ].filter(Boolean).join("");
     return `

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Identification of Biomarkers from Gene Expression Data — Auda Kais</title>
+  <meta name="description" content="M.Sc. thesis: machine-learning pipeline for cancer biomarker identification from TCGA RNA-seq data.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="sub">
+  <header class="bar">
+    <a class="bar__home" href="./">ak<span class="caret">_</span></a>
+    <nav class="bar__nav">
+      <a href="./#projects">projects</a>
+      <a href="./#contact">contact</a>
+    </nav>
+  </header>
+
+  <main class="case">
+    <header class="case__head">
+      <p class="case__kicker"><span class="prow__label">M.Sc. Thesis</span> 2026</p>
+      <h1>Identification of Biomarkers from Gene Expression Data</h1>
+      <p class="case__stack">Python / scikit-learn / PyTorch / SHAP / PostgreSQL</p>
+      <p class="case__links">
+        <a href="https://github.com/audakais/thesis/blob/main/Identification%20of%20Biomarkers%20from%20Gene%20Expression%20Data.pdf" target="_blank" rel="noopener">paper ↗</a>
+        <a href="https://github.com/audakais/thesis" target="_blank" rel="noopener">code ↗</a>
+      </p>
+    </header>
+
+    <dl class="stats">
+      <div><dt>Pan-cancer accuracy</dt><dd>0.968</dd><span>6,585 tumour samples, 8 tumour types</span></div>
+      <div><dt>ROC-AUC</dt><dd>0.971–1.000</dd><span>tumour vs. normal, 7 TCGA cohorts</span></div>
+      <div><dt>F1 Macro</dt><dd>0.895–0.988</dd><span>patient-level 5-fold GroupKFold</span></div>
+      <div><dt>Permutation test</dt><dd>p &lt; 0.01</dd><span>100 permutations, all tested cohorts</span></div>
+    </dl>
+
+    <section class="pipeline">
+      <h2>Pipeline</h2>
+      <ol>
+        <li><b>Data</b><span>TCGA RNA-seq from the GDC API into PostgreSQL; GTEx v8 healthy tissue as external control</span></li>
+        <li><b>Selection</b><span>Random Forest per cohort, features chosen inside each training fold to prevent leakage; SMOTE on training folds only</span></li>
+        <li><b>Interpretability</b><span>Decision Trees with human-readable rules, SHAP attributions</span></li>
+        <li><b>Validation</b><span>Permutation tests, learning curves, KEGG pathway enrichment, comparison with COSMIC drivers</span></li>
+        <li><b>Survival</b><span>Kaplan–Meier analysis and DeepHit risk triage</span></li>
+      </ol>
+    </section>
+
+    <section class="figs">
+      <figure class="fig fig--side">
+        <img src="assets/thesis/pancancer-confusion.webp" alt="8x8 pan-cancer confusion matrix" width="1264" height="1179" loading="lazy">
+        <figcaption>
+          <b>Pan-cancer classification.</b> Out-of-fold confusion matrix over 6,585 tumour samples.
+          The only notable confusion is LUAD–LUSC, two lung cancers of shared histological origin;
+          every other off-diagonal cell holds fewer than 10 samples.
+        </figcaption>
+      </figure>
+
+      <figure class="fig fig--side fig--narrow">
+        <img src="assets/thesis/biomarker-overlap.webp" alt="Shared top-50 biomarkers between cohorts" width="909" height="1394" loading="lazy">
+        <figcaption>
+          <b>Biomarker overlap.</b> Number of top-50 Random Forest genes shared between cohorts.
+          LUAD and LUSC share 23; KIRC and THCA are the most tissue-specific.
+        </figcaption>
+      </figure>
+
+      <figure class="fig fig--wide">
+        <img src="assets/thesis/shap-brca.webp" alt="SHAP beeswarm plot, breast cancer, top 20 genes" width="1390" height="884" loading="lazy">
+        <figcaption>
+          <b>What the model looks at.</b> SHAP values for the top-20 genes in breast cancer (BRCA).
+          Each dot is a sample; colour is expression level.
+        </figcaption>
+      </figure>
+
+      <figure class="fig fig--wide">
+        <img src="assets/thesis/learning-curves.webp" alt="Learning curves for seven TCGA cohorts" width="1800" height="887" loading="lazy">
+        <figcaption>
+          <b>Learning curves.</b> Train and validation F1 converge by 60–70% of the data across the seven cohorts,
+          ruling out severe overfitting. PRAD varies most, with about 10 normal samples per test fold.
+        </figcaption>
+      </figure>
+    </section>
+
+    <p class="case__back"><a href="./#projects">← all projects</a></p>
+  </main>
+
+  <footer class="foot">
+    <span>Auda Kais</span>
+    <span>Rome · 2026</span>
+  </footer>
+</body>
+</html>

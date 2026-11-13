@@ -35,6 +35,7 @@
   $("count").textContent = String(P.length).padStart(2, "0");
   $("plist").innerHTML = P.map((p, i) => {
     const links = [
+      p.page && `<a href="${esc(p.page)}">details →</a>`,
       p.demo && `<a href="${esc(p.demo)}" target="_blank" rel="noopener">live ↗</a>`,
       p.paper && `<a href="${esc(p.paper)}" target="_blank" rel="noopener">paper ↗</a>`,
       p.github && `<a href="${esc(p.github)}" target="_blank" rel="noopener">code ↗</a>`,
@@ -42,7 +43,7 @@
     return `
       <li class="prow">
         <span class="prow__n">${String(i + 1).padStart(2, "0")}</span>
-        <h3 class="prow__title">${esc(p.title)}${p.label ? ` <span class="prow__label">${esc(p.label)}</span>` : ""}</h3>
+        <h3 class="prow__title">${p.page ? `<a href="${esc(p.page)}">${esc(p.title)}</a>` : esc(p.title)}${p.label ? ` <span class="prow__label">${esc(p.label)}</span>` : ""}</h3>
         <span class="prow__stack">${p.stack.map(esc).join(" / ")}</span>
         <span class="prow__year">${esc(p.year)}</span>
         <span class="prow__links">${links}</span>

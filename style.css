@@ -100,6 +100,7 @@ h2 { font: 400 clamp(40px, 6vw, 72px)/1 var(--serif); }
 .prow__n { color: var(--muted); font-size: 12px; }
 .prow__title { font: 400 clamp(26px, 3vw, 38px)/1.1 var(--serif); }
 .prow__stack { color: var(--muted); font-size: 13px; }
+.prow__label { font: 500 11px/1 var(--mono); color: var(--orange); border: 1px solid var(--orange); padding: 3px 6px; vertical-align: middle; margin-left: 8px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
 .prow__year { color: var(--muted); font-size: 13px; }
 .prow__links { display: flex; gap: 18px; font-size: 13px; justify-self: end; }
 .prow__links a { color: var(--cyan); }

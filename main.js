@@ -41,7 +41,7 @@
     return `
       <li class="prow">
         <span class="prow__n">${String(i + 1).padStart(2, "0")}</span>
-        <h3 class="prow__title">${esc(p.title)}</h3>
+        <h3 class="prow__title">${esc(p.title)}${p.label ? ` <span class="prow__label">${esc(p.label)}</span>` : ""}</h3>
         <span class="prow__stack">${p.stack.map(esc).join(" / ")}</span>
         <span class="prow__year">${esc(p.year)}</span>
         <span class="prow__links">${links}</span>

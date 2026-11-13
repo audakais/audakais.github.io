@@ -1,5 +1,5 @@
 // Site content. To add a project, copy a { ... } block into PROJECTS.
-// Optional fields: demo, description (hidden when empty).
+// Optional fields: label, demo, description (hidden when empty).
 
 window.SITE = {
   name: "Auda Kais",
@@ -14,17 +14,10 @@ window.SITE = {
 
 window.PROJECTS = [
   {
-    title: "statistics-hw",
+    title: "Identification of Biomarkers from Gene Expression Data",
+    label: "Thesis",
     year: 2026,
-    stack: ["JavaScript", "HTML", "CSS", "Python"],
-    github: "https://github.com/audakais/statistics-hw",
-    demo: "https://audakais.github.io/statistics-hw/",
-    description: "",
-  },
-  {
-    title: "thesis",
-    year: 2026,
-    stack: ["Python", "Shell"],
+    stack: ["Python", "scikit-learn", "PyTorch", "PostgreSQL"],
     github: "https://github.com/audakais/thesis",
     demo: "",
     description: "",

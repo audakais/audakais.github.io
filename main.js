@@ -5,17 +5,17 @@
   const esc = (s) =>
     String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  // --- intestazione -------------------------------------------------------
+  // --- header -----------------------------------------------------------
   $("name").textContent = S.name;
   $("role").textContent = S.role;
   $("coords").textContent = S.coords;
   $("foot-name").textContent = S.name;
   $("foot-place").textContent = `${S.city} · ${new Date().getFullYear()}`;
 
-  // --- codice nell'hero: si scrive da solo, generato dai dati ---------------
+  // --- hero code: typed out, generated from the data ---------------------
   const handle = S.name.split(" ").pop().toLowerCase();
   const code =
-    `>>> ${handle}.progetti()\n` +
+    `>>> ${handle}.projects()\n` +
     `[${P.map((p) => `'${p.title}'`).join(", ")}]\n` +
     `>>> `;
   const pre = $("hero-code");
@@ -31,12 +31,12 @@
     setTimeout(tick, 600);
   }
 
-  // --- progetti -----------------------------------------------------------
+  // --- projects ---------------------------------------------------------
   $("count").textContent = String(P.length).padStart(2, "0");
   $("plist").innerHTML = P.map((p, i) => {
     const links = [
       p.demo && `<a href="${esc(p.demo)}" target="_blank" rel="noopener">live ↗</a>`,
-      p.github && `<a href="${esc(p.github)}" target="_blank" rel="noopener">codice ↗</a>`,
+      p.github && `<a href="${esc(p.github)}" target="_blank" rel="noopener">code ↗</a>`,
     ].filter(Boolean).join("");
     return `
       <li class="prow">
@@ -49,7 +49,7 @@
       </li>`;
   }).join("");
 
-  // --- contatti -----------------------------------------------------------
+  // --- contact ----------------------------------------------------------
   const labels = { github: "GitHub", linkedin: "LinkedIn", email: "Email" };
   $("links").innerHTML = Object.entries(S.links)
     .filter(([, url]) => url)

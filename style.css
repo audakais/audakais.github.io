@@ -1,7 +1,7 @@
 :root {
   --bg: #0a1220;
   --bg-2: #0f1a2c;
-  --text: #e9e3d8;      /* travertino */
+  --text: #e9e3d8;      /* travertine */
   --muted: #8a93a3;
   --line: #22304a;
   --orange: #f2853a;
@@ -23,7 +23,7 @@ a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; }
 ::selection { background: var(--orange); color: var(--bg); }
 
-/* --- barra ----------------------------------------------------------- */
+/* --- top bar ----------------------------------------------------------- */
 .bar {
   position: fixed; inset: 0 0 auto 0; z-index: 10;
   display: flex; justify-content: space-between; align-items: center;
@@ -76,7 +76,7 @@ img { display: block; max-width: 100%; }
 .corner { position: absolute; width: 28px; height: 28px; border-color: var(--cyan); border-style: solid; opacity: .7; }
 .corner { top: 72px; right: var(--pad); border-width: 1px 1px 0 0; }
 
-/* --- progetti -------------------------------------------------------- */
+/* --- projects -------------------------------------------------------- */
 .projects { padding: clamp(72px, 12vw, 160px) var(--pad); }
 .section-head {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -107,7 +107,7 @@ h2 { font: 400 clamp(40px, 6vw, 72px)/1 var(--serif); }
 .prow__links a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .prow__desc { grid-column: 2 / -1; color: var(--muted); max-width: 60ch; }
 
-/* --- fascia immagine ------------------------------------------------- */
+/* --- image band --------------------------------------------------- */
 .band { position: relative; height: clamp(260px, 50vw, 620px); overflow: hidden; }
 .band img { width: 100%; height: 100%; object-fit: cover; }
 .band figcaption {
@@ -116,7 +116,7 @@ h2 { font: 400 clamp(40px, 6vw, 72px)/1 var(--serif); }
   background: rgba(10,18,32,.7); padding: 4px 8px;
 }
 
-/* --- contatti -------------------------------------------------------- */
+/* --- contact --------------------------------------------------------- */
 .contact {
   display: grid; grid-template-columns: 1fr minmax(240px, 34%);
   gap: var(--pad);

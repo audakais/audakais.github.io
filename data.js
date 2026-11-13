@@ -1,10 +1,10 @@
-// Contenuti del sito. Per aggiungere un progetto copia un blocco { ... } in PROJECTS.
-// Campi facoltativi: demo, description (se vuota non viene mostrata).
+// Site content. To add a project, copy a { ... } block into PROJECTS.
+// Optional fields: demo, description (hidden when empty).
 
 window.SITE = {
   name: "Auda Kais",
-  role: "Informatica · Sapienza Università di Roma",
-  city: "Roma",
+  role: "Computer Science",
+  city: "Rome",
   coords: "41.9028° N  12.4964° E",
   links: {
     github: "https://github.com/audakais",

@@ -5,60 +5,55 @@
   const esc = (s) =>
     String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  // --- header -----------------------------------------------------------
-  $("name").textContent = S.name;
+  // --- hero ---------------------------------------------------------------
+  $("place").textContent = S.city;
+  $("headline").textContent = S.headline;
   $("role").textContent = S.role;
-  $("coords").textContent = S.coords;
-  $("foot-name").textContent = S.name;
-  $("foot-place").textContent = `${S.city} · ${new Date().getFullYear()}`;
+  $("cta-primary").href = S.links.linkedin;
+  $("nav-cta").href = S.links.linkedin;
+  $("cta-github").href = S.links.github;
+  $("foot-year").textContent = `${S.city} · ${new Date().getFullYear()}`;
 
-  // --- hero code: typed out, generated from the data ---------------------
-  const handle = S.name.split(" ").pop().toLowerCase();
-  const code =
-    `>>> ${handle}.projects()\n` +
-    `[${P.map((p) => `'${p.title}'`).join(", ")}]\n` +
-    `>>> `;
-  const pre = $("hero-code");
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduce) {
-    pre.textContent = code;
-  } else {
-    let i = 0;
-    const tick = () => {
-      pre.textContent = code.slice(0, ++i);
-      if (i < code.length) setTimeout(tick, code[i - 1] === "\n" ? 380 : 32);
-    };
-    setTimeout(tick, 600);
-  }
-
-  // --- projects ---------------------------------------------------------
-  $("count").textContent = String(P.length).padStart(2, "0");
-  $("plist").innerHTML = P.map((p, i) => {
+  // --- work ---------------------------------------------------------------
+  const ext = (href, text) => `<a href="${esc(href)}" target="_blank" rel="noopener">${text} ↗</a>`;
+  $("projects").innerHTML = P.map((p) => {
+    const media = p.image
+      ? `<div class="card__media"><img src="${esc(p.image)}" alt="" loading="lazy"></div>`
+      : "";
+    const stats = (p.stats || [])
+      .map(([v, k]) => `<div><b>${esc(v)}</b><span>${esc(k)}</span></div>`)
+      .join("");
     const links = [
-      p.page && `<a href="${esc(p.page)}">details →</a>`,
-      p.demo && `<a href="${esc(p.demo)}" target="_blank" rel="noopener">live ↗</a>`,
-      p.paper && `<a href="${esc(p.paper)}" target="_blank" rel="noopener">paper ↗</a>`,
-      p.github && `<a href="${esc(p.github)}" target="_blank" rel="noopener">code ↗</a>`,
+      p.demo && ext(p.demo, "Live"),
+      p.paper && ext(p.paper, "Paper"),
+      p.github && ext(p.github, "Code"),
     ].filter(Boolean).join("");
+    const title = p.page ? `<a class="card__link" href="${esc(p.page)}">${esc(p.title)}</a>` : esc(p.title);
     return `
-      <li class="prow">
-        <span class="prow__n">${String(i + 1).padStart(2, "0")}</span>
-        <h3 class="prow__title">${p.page ? `<a href="${esc(p.page)}">${esc(p.title)}</a>` : esc(p.title)}${p.label ? ` <span class="prow__label">${esc(p.label)}</span>` : ""}</h3>
-        <span class="prow__stack">${p.stack.map(esc).join(" / ")}</span>
-        <span class="prow__year">${esc(p.year)}</span>
-        <span class="prow__links">${links}</span>
-        ${p.description ? `<p class="prow__desc">${esc(p.description)}</p>` : ""}
-      </li>`;
+      <article class="card${p.image ? " card--feature" : ""}">
+        ${media}
+        <div class="card__body">
+          <p class="card__meta">${p.label ? `<span class="tag">${esc(p.label)}</span>` : ""}<span>${esc(p.year)}</span></p>
+          <h3 class="card__title">${title}</h3>
+          ${p.description ? `<p class="card__desc">${esc(p.description)}</p>` : ""}
+          ${stats ? `<div class="card__stats">${stats}</div>` : ""}
+          <p class="card__stack">${p.stack.map(esc).join(" · ")}</p>
+          <div class="card__foot">
+            ${p.page ? `<a class="more" href="${esc(p.page)}">Read case study <span aria-hidden="true">→</span></a>` : ""}
+            <span class="card__ext">${links}</span>
+          </div>
+        </div>
+      </article>`;
   }).join("");
 
-  // --- contact ----------------------------------------------------------
-  const labels = { github: "GitHub", linkedin: "LinkedIn", email: "Email" };
+  // --- contact ------------------------------------------------------------
+  const labels = { linkedin: "LinkedIn", github: "GitHub", email: "Email" };
   $("links").innerHTML = Object.entries(S.links)
     .filter(([, url]) => url)
     .map(([k, url]) => {
       const href = k === "email" ? `mailto:${url}` : url;
       const shown = url.replace(/^https?:\/\/(www\.)?/, "");
-      return `<li><span>${labels[k] || k}</span><a href="${esc(href)}" target="_blank" rel="noopener">${esc(shown)}</a></li>`;
+      return `<li><a href="${esc(href)}" target="_blank" rel="noopener"><span>${labels[k] || k}</span><span class="muted">${esc(shown)}</span><span aria-hidden="true">↗</span></a></li>`;
     })
     .join("");
 })();

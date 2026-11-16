@@ -4,60 +4,52 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Auda Kais</title>
-  <meta name="description" content="Auda Kais — projects.">
+  <meta name="description" content="Auda Kais — machine learning and data.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="bar">
-    <a class="bar__home" href="#top">ak<span class="caret">_</span></a>
-    <nav class="bar__nav">
-      <a href="#projects">projects</a>
-      <a href="#contact">contact</a>
-    </nav>
+  <header class="nav">
+    <div class="wrap nav__in">
+      <a class="nav__name" href="./">Auda Kais</a>
+      <nav class="nav__links">
+        <a href="#work">Work</a>
+        <a href="#contact">Contact</a>
+        <a class="btn btn--sm" id="nav-cta" target="_blank" rel="noopener">Get in touch</a>
+      </nav>
+    </div>
   </header>
 
-  <main id="top">
-    <section class="hero">
-      <img class="hero__img" src="assets/arno.jpg" alt="">
-      <div class="hero__shade"></div>
-      <span class="corner"></span>
-
-      <pre class="hero__code" aria-hidden="true" id="hero-code"></pre>
-
-      <div class="hero__text">
-        <h1 id="name"></h1>
-        <p class="hero__role" id="role"></p>
+  <main>
+    <section class="hero wrap">
+      <p class="eyebrow" id="place"></p>
+      <h1 class="hero__title" id="headline"></h1>
+      <p class="hero__role" id="role"></p>
+      <div class="hero__cta">
+        <a class="btn" id="cta-primary" target="_blank" rel="noopener">Get in touch <span aria-hidden="true">→</span></a>
+        <a class="btn btn--ghost" id="cta-github" target="_blank" rel="noopener">GitHub</a>
       </div>
-      <p class="hero__coords" id="coords"></p>
     </section>
 
-    <section class="projects" id="projects">
+    <section class="work wrap" id="work">
       <div class="section-head">
-        <h2>Projects</h2>
-        <span class="count" id="count"></span>
+        <h2>Selected work</h2>
       </div>
-      <ol class="plist" id="plist"></ol>
+      <div class="cards" id="projects"></div>
     </section>
 
-    <figure class="band">
-      <img src="assets/gazometro.jpg" alt="Gazometro, Ostiense, Rome" loading="lazy">
-    </figure>
-
-    <section class="contact" id="contact">
-      <div class="contact__links">
-        <h2>Contact</h2>
-        <ul id="links"></ul>
-      </div>
-      <img class="contact__img" src="assets/eur.jpg" alt="Palazzo della Civiltà Italiana at sunset, EUR, Rome" loading="lazy">
+    <section class="contact wrap" id="contact">
+      <h2 class="contact__title">Let’s talk.</h2>
+      <p class="contact__sub">Open to conversations about machine learning, data and new ventures.</p>
+      <ul class="contact__links" id="links"></ul>
     </section>
   </main>
 
-  <footer class="foot">
-    <span id="foot-name"></span>
-    <span id="foot-place"></span>
+  <footer class="foot wrap">
+    <span>Auda Kais</span>
+    <span id="foot-year"></span>
   </footer>
 
   <script src="data.js"></script>

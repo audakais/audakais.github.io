@@ -24,26 +24,32 @@
 
   <main>
     <section class="hero wrap">
-      <p class="eyebrow" id="place"></p>
-      <h1 class="hero__title" id="headline"></h1>
-      <p class="hero__role" id="role"></p>
-      <div class="hero__cta">
-        <a class="btn" id="cta-primary" target="_blank" rel="noopener">Get in touch <span aria-hidden="true">→</span></a>
-        <a class="btn btn--ghost" id="cta-github" target="_blank" rel="noopener">GitHub</a>
+      <div class="hero__text">
+        <p class="eyebrow fade" id="place"></p>
+        <h1 class="hero__title" id="headline"></h1>
+        <p class="hero__role fade" id="role"></p>
+        <div class="hero__cta fade">
+          <a class="btn" id="cta-primary" target="_blank" rel="noopener">Get in touch <span aria-hidden="true">→</span></a>
+          <a class="btn btn--ghost" id="cta-github" target="_blank" rel="noopener">GitHub</a>
+        </div>
       </div>
+      <figure class="matrix fade" aria-label="Pan-cancer confusion matrix from my M.Sc. thesis">
+        <div class="matrix__grid" id="matrix"></div>
+        <figcaption class="matrix__read" id="matrix-read"></figcaption>
+      </figure>
     </section>
 
     <section class="work wrap" id="work">
-      <div class="section-head">
+      <div class="section-head" data-reveal>
         <h2>Selected work</h2>
       </div>
       <div class="cards" id="projects"></div>
     </section>
 
     <section class="contact wrap" id="contact">
-      <h2 class="contact__title">Let’s talk.</h2>
-      <p class="contact__sub">Open to conversations.</p>
-      <ul class="contact__links" id="links"></ul>
+      <h2 class="contact__title" data-reveal>Let’s talk.</h2>
+      <p class="contact__sub" data-reveal>Open to conversations.</p>
+      <ul class="contact__links" id="links" data-reveal></ul>
     </section>
   </main>
 

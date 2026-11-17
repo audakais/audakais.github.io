@@ -1,0 +1,84 @@
+/* Journal-article layout for the thesis page (two-column, Times-style). */
+
+.paper-wrap { max-width: 1040px; padding-top: 40px; padding-bottom: clamp(64px, 9vw, 112px); }
+.paper-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.paper-bar__links { display: flex; gap: 20px; font-size: 14px; }
+.paper-bar__links a { color: var(--ink); border-bottom: 1px solid var(--line); }
+.paper-bar__links a:hover { border-color: var(--ink); }
+
+.paper {
+  --serif: "STIX Two Text", "Times New Roman", Times, serif;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(17,17,16,.04), 0 30px 60px -40px rgba(17,17,16,.25);
+  padding: clamp(28px, 6vw, 72px) clamp(20px, 6vw, 72px) clamp(40px, 6vw, 72px);
+  font: 400 15.5px/1.5 var(--serif);
+  color: #111;
+  font-kerning: normal;
+  font-variant-numeric: lining-nums;
+}
+
+.paper__head { text-align: center; margin-bottom: clamp(24px, 3.5vw, 40px); }
+.paper h1 {
+  font: 400 clamp(26px, 3.4vw, 36px)/1.15 var(--serif);
+  letter-spacing: -.005em; max-width: 26ch; margin: 0 auto; text-wrap: balance;
+}
+.paper__author { margin-top: 18px; font-size: 17px; }
+.paper__aff { margin-top: 4px; font-size: 13px; font-style: italic; color: #444; }
+
+.cols + .cols { margin-top: 6px; }
+.cols { column-count: 2; column-gap: 30px; text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+.cols p { margin: 0; text-indent: 1em; }
+.cols p.first, .cols p.abstract, .cols h2 + p, .cols h3 + p { text-indent: 0; }
+
+.abstract { font-size: 14px; font-weight: 700; line-height: 1.4; margin-bottom: 10px !important; }
+.abstract i { font-weight: 700; }
+.abstract a { font-weight: 700; }
+
+.paper h2 {
+  font: 400 14.5px/1.3 var(--serif);
+  font-variant: small-caps; letter-spacing: .04em; text-transform: none;
+  text-align: center; margin: 22px 0 8px;
+  break-after: avoid;
+}
+.paper h3 { font: italic 400 15px/1.3 var(--serif); margin: 14px 0 4px; break-after: avoid; }
+
+.dropcap { float: left; font-size: 3.15em; line-height: .82; padding: 4px 4px 0 0; }
+.sc { font-variant: small-caps; letter-spacing: .02em; }
+.mono { font-family: var(--mono); font-size: .82em; }
+
+.paper a[href^="#r"] { color: inherit; text-decoration: none; }
+.paper a[href^="#r"]:hover { color: var(--accent); }
+
+/* tables */
+.tbl { break-inside: avoid; margin: 16px 0 14px; text-align: center; }
+.tbl__cap { font-size: 12.5px; font-variant: small-caps; letter-spacing: .04em; line-height: 1.35; text-indent: 0 !important; margin-bottom: 6px !important; }
+.tbl table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.tbl thead tr { border-top: 1.5px solid #111; border-bottom: 1px solid #111; }
+.tbl tbody tr:last-child { border-bottom: 1.5px solid #111; }
+.tbl th { font-weight: 400; padding: 4px 3px; }
+.tbl td { padding: 2.5px 3px; }
+.tbl td:first-child, .tbl th:first-child { text-align: left; }
+.tbl__note { font-size: 11.5px; text-align: left; text-indent: 0 !important; margin-top: 4px !important; color: #333; }
+
+/* figures */
+.pfig { break-inside: avoid; margin: 16px 0; }
+.pfig img { width: 100%; height: auto; }
+.pfig--narrow img { width: 72%; margin: 0 auto; }
+.pfig--wide { column-span: all; margin: 22px 0; }
+.pfig--wide img { max-width: 760px; margin: 0 auto; }
+.pfig figcaption { font-size: 12.5px; line-height: 1.35; margin-top: 6px; text-align: justify; }
+.pfig--wide figcaption { max-width: 760px; margin-left: auto; margin-right: auto; }
+.pfig figcaption b { font-weight: 400; }
+
+/* references */
+.refs-h { margin-top: 26px !important; }
+.refs { list-style: none; counter-reset: ref; font-size: 12.5px; line-height: 1.35; text-align: left; }
+.refs li { counter-increment: ref; position: relative; padding-left: 2.6em; margin-bottom: 4px; break-inside: avoid; }
+.refs li::before { content: "[" counter(ref) "]"; position: absolute; left: 0; }
+.refs li:target { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+@media (max-width: 760px) {
+  .cols { column-count: 1; }
+  .pfig--narrow img { width: 82%; }
+}

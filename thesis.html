@@ -39,6 +39,7 @@
         <p class="paper__aff">M.Sc. Thesis in Computer Science · Rome, Italy · 2026</p>
       </header>
 
+      <!-- ============================================================ -->
       <div class="cols">
         <p class="abstract"><i>Abstract</i>—High-throughput RNA sequencing (RNA-seq) data from the TCGA project enables
         systematic identification of tumour-specific transcriptomic biomarkers. We present a reproducible pipeline
@@ -57,134 +58,362 @@
         ≥&nbsp;0.990 and assigns mean tumour probability &lt;&nbsp;4% to healthy donors.</p>
 
         <p class="abstract"><i>Index Terms</i>—Biomarker discovery, gene expression, RNA-seq, TCGA, random forest,
-        decision tree, SHAP, interpretable machine learning.</p>
+        decision tree, SHAP, survival analysis, interpretable machine learning.</p>
 
         <h2>I. Introduction</h2>
         <p class="first"><span class="dropcap">T</span><span class="sc">he objective</span> of this work is to identify
         differentially expressed genetic biomarkers across multiple tumour cohorts from The Cancer Genome Atlas (TCGA),
         using exclusively decision-based algorithms: Random Forest <a href="#r1">[1]</a> and Decision Trees
         <a href="#r2">[2]</a>. The analysis is based on RNA-seq TPM data downloaded through the Genomic Data Commons
-        (GDC) REST API.</p>
-        <p>TCGA provides multi-cohort RNA-seq data with matched clinical annotations, and Hoadley et al.
-        <a href="#r12">[12]</a> established cell-of-origin patterns across 33 tumour types. Random Forest and Decision
-        Trees are widely adopted for high-dimensional omics data owing to their resistance to collinearity and native
-        feature-importance scoring. This study combines strict patient-level cross-validation, multi-cohort comparison
-        across seven cancer types and an exploratory healthy-tissue validation layer based on GTEx
-        <a href="#r9">[9]</a>.</p>
+        (GDC) REST API <a href="#r20">[20]</a>.</p>
+        <p>Transcriptomic data are high-dimensional, strongly imbalanced and, in TCGA, organised around patients who
+        contribute both tumour and adjacent normal samples. Each of these properties can inflate reported performance
+        if the evaluation protocol is not designed carefully: features selected on the full dataset leak information
+        from test samples, oversampling before splitting places synthetic copies of test samples in the training set,
+        and random sample-level splits allow the same individual to appear on both sides. The pipeline presented here
+        is built to rule out these effects and to keep every selected gene interpretable.</p>
+        <p>The main contributions are as follows:</p>
+        <ol class="contrib">
+          <li>a reproducible pipeline from the GDC API to a PostgreSQL expression database and per-cohort analysis
+          matrices for seven TCGA cohorts;</li>
+          <li>a leakage-free evaluation protocol combining patient-level GroupKFold, per-fold feature selection and
+          SMOTE restricted to the training fold, verified with permutation tests and learning curves;</li>
+          <li>a multi-level validation of the selected biomarkers through SHAP, pathway enrichment, curated cancer-gene
+          catalogues and cross-cohort overlap;</li>
+          <li>two exploratory extensions: survival prediction with DeepHit and a tumour-vs.-healthy classifier trained
+          against GTEx v8 donors.</li>
+        </ol>
+        <p>Section&nbsp;II reviews related work, Section&nbsp;III describes data and methods, Section&nbsp;IV reports the
+        results, Section&nbsp;V discusses limitations, and Section&nbsp;VI concludes.</p>
 
+        <h2>II. Related Work</h2>
+        <p>Several studies have demonstrated the utility of machine learning for transcriptomic cancer
+        classification. The TCGA project <a href="#r12">[12]</a>–<a href="#r20">[20]</a> provides multi-cohort RNA-seq
+        data with matched clinical annotations, enabling systematic comparison across cancer types. Hoadley et al.
+        <a href="#r12">[12]</a> established cell-of-origin patterns across 33 tumour types, serving as the benchmark
+        multi-class classification reference.</p>
+        <p>Random Forest <a href="#r1">[1]</a> and Decision Trees <a href="#r2">[2]</a> are widely adopted for
+        high-dimensional omics data owing to their resistance to collinearity and native feature-importance scoring.
+        Class imbalance, pervasive in clinical datasets, is typically addressed with SMOTE <a href="#r3">[3]</a>. Model
+        interpretability is increasingly prioritised: SHAP <a href="#r4">[4]</a> decomposes individual predictions into
+        gene-level contributions, while pathway enrichment via Enrichr <a href="#r5">[5]</a>, <a href="#r6">[6]</a>
+        contextualises data-driven biomarkers within biological pathways. Validation against curated oncogene
+        catalogues—COSMIC <a href="#r7">[7]</a> and Bailey et al. <a href="#r8">[8]</a>—provides a literature
+        benchmark for newly discovered biomarkers. The GTEx project <a href="#r9">[9]</a> catalogues gene expression in
+        certified healthy tissues, enabling tumour-vs.-healthy classifiers that complement TCGA-based
+        tumour-vs.-normal models. The present study extends these approaches by combining strict patient-level
+        cross-validation, multi-cohort comparison across seven cancer types and an exploratory healthy-tissue
+        validation layer.</p>
       </div>
-      <div class="cols">
-        <h2>II. Materials and Methods</h2>
-        <h3>A. Data and Database</h3>
-        <p>RNA-seq files are downloaded from the GDC API and stored in a PostgreSQL database (tables
-        <span class="mono">Patients</span>, <span class="mono">Samples</span>, <span class="mono">SampleTypes</span>,
-        <span class="mono">Biomarkers</span>, <span class="mono">Measurements</span>). For every project with at least
-        100 tumour samples, the 1,500 most variable genes are pivoted in-database into one analysis matrix per cohort,
-        yielding seven cohorts: BRCA, KIRC, LUAD, LUSC, PRAD, STAD and THCA.</p>
 
-        <h3>B. Preprocessing</h3>
-        <p>Expression values are transformed as log<sub>2</sub>(TPM&nbsp;+&nbsp;1) to stabilise RNA-seq variance;
-        residual missing values are imputed with the column median. The target is 0 for Solid Tissue Normal and 1 for
-        Primary Tumor.</p>
+      <!-- ============================================================ -->
+      <div class="cols">
+        <h2>III. Materials and Methods</h2>
+        <h3>A. Data Acquisition and Database</h3>
+        <p>RNA-seq files (augmented STAR gene counts) are downloaded through the GDC REST API and loaded into a
+        PostgreSQL database with five main tables: <span class="mono">Patients</span> (demographics and project),
+        <span class="mono">Samples</span>, <span class="mono">SampleTypes</span> (Solid Tissue Normal or Primary Tumor),
+        <span class="mono">Biomarkers</span> (genes by Ensembl ID) and <span class="mono">Measurements</span> (TPM per
+        sample and gene).</p>
+
+        <h3>B. Dataset Construction and Preprocessing</h3>
+        <p>For each project with at least 100 tumour samples—normal samples are kept regardless of count, as TCGA
+        systematically under-samples adjacent normal tissue—per-gene variance is computed in the database, the 1,500
+        most variable genes are selected, and the data are pivoted in-database into a samples × genes matrix. This
+        yields seven cohorts: BRCA, KIRC, LUAD, LUSC, PRAD, STAD and THCA. Expression values are transformed as
+        log<sub>2</sub>(TPM&nbsp;+&nbsp;1) to stabilise RNA-seq variance, residual missing values are imputed with the
+        column median, and the target is 0 for Solid Tissue Normal and 1 for Primary Tumor.</p>
 
         <h3>C. Cross-Validation and Leakage Prevention</h3>
-        <p>GroupKFold partitions samples by patient, so training and test sets never share an individual. Within each
-        training fold the top-500 genes by variance are re-selected, and SMOTE <a href="#r3">[3]</a>,
-        <a href="#r11">[11]</a> is applied to the training portion only; the test set is never resampled.</p>
+        <p>The first 12 characters of the TCGA <span class="mono">submitter_id</span> identify the patient.
+        GroupKFold partitions by patient, so all samples of an individual remain in the same fold and tumour and normal
+        samples of the same person never straddle training and test. Each fold uses 80% of patients for training and
+        20% for testing, and every sample is evaluated exactly once.</p>
+        <p>The 1,500-gene pre-filter is a computational constraint of the database pivot. To keep test samples out of
+        feature selection, the top-500 genes by variance are re-selected inside each training fold using training
+        samples only. Class imbalance is severe (e.g., PRAD: 51 normal vs. 500 tumour; STAD: 36 vs. 412), so SMOTE
+        <a href="#r3">[3]</a>, <a href="#r11">[11]</a> is applied exclusively to the training portion of each fold; the
+        test set is never resampled. SMOTE is preferred over class reweighting alone because it increases the number of
+        normal-class decision boundaries the model can learn, not just their loss contribution.</p>
 
-        <h3>D. Models</h3>
-        <p>The Random Forest uses 250 trees, maximum depth 7 and <span class="mono">min_samples_leaf</span>&nbsp;=&nbsp;5,
-        implemented with scikit-learn <a href="#r10">[10]</a>. Decision Trees with
-        <span class="mono">min_samples_leaf</span>&nbsp;=&nbsp;100 provide human-readable if–then rules. A pan-cancer
-        model classifies the tissue of origin across eight tumour types.</p>
+        <h3>D. Random Forest Classifier</h3>
+        <p>The Random Forest <a href="#r1">[1]</a>, implemented with scikit-learn <a href="#r10">[10]</a>, uses 250
+        trees, maximum depth 7 and <span class="mono">min_samples_leaf</span>&nbsp;=&nbsp;5, which prevents
+        single-sample leaf memorisation and keeps training F1 below 1.0 for all cohorts. Mean impurity decrease (Gini)
+        is the importance measure; scores are accumulated in the full 1,500-gene space and averaged across folds.
+        Training F1 is recorded alongside validation F1, and a gap below 0.05 is considered acceptable. A sensitivity
+        analysis repeats the pipeline with <span class="mono">min_samples_leaf</span> ∈ {10, 50, 100}.</p>
 
-        <h3>E. Interpretation and Validation</h3>
-        <p>Gene-level contributions are computed with SHAP <a href="#r4">[4]</a>; pathway enrichment uses Enrichr
-        <a href="#r5">[5]</a>, <a href="#r6">[6]</a>; selected genes are compared with COSMIC <a href="#r7">[7]</a> and
-        Bailey et al. <a href="#r8">[8]</a>. Permutation tests and learning curves assess whether performance reflects
-        biological signal rather than memorisation.</p>
+        <h3>E. Interpretable Decision Trees</h3>
+        <p>Decision Trees <a href="#r2">[2]</a> provide human-readable if–then rules. They are trained on the top-50
+        Random Forest genes with unrestricted depth, <span class="mono">min_samples_leaf</span>&nbsp;=&nbsp;100 (selected
+        after testing 50, 75 and 100) and balanced class weights, under the same GroupKFold and SMOTE protocol. A
+        single 30% stratified hold-out per cohort is used only to draw illustrative confusion matrices; reported F1
+        values come from cross-validation.</p>
 
+        <h3>F. Pan-Cancer Multi-Class Model</h3>
+        <p>To verify that the Random Forest distinguishes cancer type and not only tumour from normal, a multi-class
+        model is trained on tumour samples from eight cohorts (the seven above plus OV) over the 537 genes shared by
+        all cohorts, with 300 trees, maximum depth 10 and balanced subsample weights, producing 6,585 out-of-fold
+        predictions.</p>
+
+        <h3>G. Biological Interpretation and Literature Validation</h3>
+        <p>SHAP <a href="#r4">[4]</a> quantifies the per-sample contribution of each gene to the tumour prediction.
+        KEGG and Hallmark pathway enrichment of the top genes is computed through the Enrichr API
+        <a href="#r5">[5]</a>, <a href="#r6">[6]</a>. The top-50 genes of each cohort are compared with the COSMIC
+        Cancer Gene Census v98 <a href="#r7">[7]</a>, the TCGA cohort marker papers
+        <a href="#r13">[13]</a>–<a href="#r19">[19]</a>, Bailey et al. <a href="#r8">[8]</a> and the Pan-Cancer Atlas
+        <a href="#r12">[12]</a>, after mapping Ensembl IDs to HGNC symbols.</p>
+
+        <h3>H. Statistical Validation</h3>
+        <p>Permutation tests are run on the two most critical cohorts, LUAD (highest ROC-AUC) and PRAD (lowest F1):
+        class labels are shuffled 100 times while preserving the patient structure, and the full pipeline—feature
+        selection, SMOTE and Random Forest—is re-run on each permuted dataset. Learning curves (F1 Macro vs. training
+        size, 5-fold GroupKFold) diagnose overfitting and data scarcity.</p>
+
+        <h3>I. Survival Analysis and Patient Triage</h3>
+        <p>Kaplan–Meier curves stratify patients by median expression of each cohort's top Random Forest gene. As an
+        exploratory extension, DeepHit <a href="#r22">[22]</a> predicts overall survival from the top-50 genes by
+        correlation with survival, six clinical features and about 42 pathway and stromal/immune scores. The network is
+        an MLP (512-256-128-64-32) with batch normalisation and dropout 0.1, trained with Adam
+        <a href="#r21">[21]</a> on a negative log-likelihood loss plus a pairwise ranking term; a five-seed ensemble per
+        fold reduces variance. Censored patients contribute natively to training. Predicted survival is mapped to a
+        three-level triage: Red (&lt;&nbsp;1 year), Yellow (1–5 years) and Green (&gt;&nbsp;5 years). PRAD and THCA are
+        excluded, having fewer than 50 confirmed deaths.</p>
+
+        <h3>J. External Healthy Reference (GTEx)</h3>
+        <p>Adjacent normal tissue in TCGA is subject to field cancerisation: its expression profile is already altered
+        by proximity to the tumour. GTEx v8 <a href="#r9">[9]</a> samples from certified healthy donors of the matching
+        tissue therefore replace adjacent normal tissue as the negative class, balanced at up to 500 samples per class.
+        KIRC (70 kidney samples) and OV (none available) are excluded. A Random Forest on the top-50 TCGA genes is
+        evaluated with 5-fold stratified cross-validation, so that every GTEx sample receives a tumour probability from
+        a model that never saw it.</p>
       </div>
+
+      <!-- ============================================================ -->
       <div class="cols">
-        <h2>III. Results</h2>
+        <h2>IV. Results</h2>
         <h3>A. Tumour vs. Normal Classification</h3>
-        <p>Table&nbsp;I reports Random Forest performance per cohort. All cohorts reach ROC-AUC above 0.97. PRAD shows
-        the lowest normal-class recall (0.807), explained by severe class imbalance (51 normal vs. 500 tumour samples);
-        learning curves confirm data scarcity rather than memorisation.</p>
+        <p>Table&nbsp;I reports Random Forest performance. All cohorts reach ROC-AUC of at least 0.971 and the
+        train–validation gap stays below 0.05 everywhere except PRAD (0.079). PRAD also shows the lowest normal-class
+        recall (0.807), consistent with having only about ten normal samples per test fold.</p>
 
         <div class="tbl">
           <p class="tbl__cap">Table I<br><span>Random Forest Performance per Cohort (5-Fold GroupKFold)</span></p>
           <table>
             <thead>
-              <tr><th>Cohort</th><th>Normal</th><th>Tumour</th><th>F1</th><th>AUC</th><th>Rec.&nbsp;N</th></tr>
+              <tr><th>Cohort</th><th>Normal</th><th>Tumour</th><th>F1</th><th>Gap</th><th>AUC</th><th>Rec.&nbsp;N</th></tr>
             </thead>
             <tbody>
-              <tr><td>KIRC</td><td>72</td><td>533</td><td>0.988</td><td>0.989</td><td>0.985</td></tr>
-              <tr><td>BRCA</td><td>93</td><td>923</td><td>0.986</td><td>0.999</td><td>0.978</td></tr>
-              <tr><td>LUAD</td><td>59</td><td>528</td><td>0.982</td><td>1.000</td><td>0.982</td></tr>
-              <tr><td>LUSC</td><td>51</td><td>498</td><td>0.979</td><td>1.000</td><td>0.980</td></tr>
-              <tr><td>STAD</td><td>36</td><td>412</td><td>0.977</td><td>0.998</td><td>0.971</td></tr>
-              <tr><td>THCA</td><td>58</td><td>503</td><td>0.956</td><td>0.996</td><td>0.930</td></tr>
-              <tr><td>PRAD</td><td>51</td><td>500</td><td>0.895</td><td>0.971</td><td>0.807</td></tr>
+              <tr><td>KIRC</td><td>72</td><td>533</td><td>0.988</td><td>0.004</td><td>0.989</td><td>0.985</td></tr>
+              <tr><td>BRCA</td><td>93</td><td>923</td><td>0.986</td><td>0.013</td><td>0.999</td><td>0.978</td></tr>
+              <tr><td>LUAD</td><td>59</td><td>528</td><td>0.982</td><td>0.014</td><td>1.000</td><td>0.982</td></tr>
+              <tr><td>LUSC</td><td>51</td><td>498</td><td>0.979</td><td>0.012</td><td>1.000</td><td>0.980</td></tr>
+              <tr><td>STAD</td><td>36</td><td>412</td><td>0.977</td><td>0.015</td><td>0.998</td><td>0.971</td></tr>
+              <tr><td>THCA</td><td>58</td><td>503</td><td>0.956</td><td>0.032</td><td>0.996</td><td>0.930</td></tr>
+              <tr><td>PRAD</td><td>51</td><td>500</td><td>0.895</td><td>0.079</td><td>0.971</td><td>0.807</td></tr>
             </tbody>
           </table>
-          <p class="tbl__note">F1 = validation F1 Macro; Rec.&nbsp;N = recall on the normal class.</p>
+          <p class="tbl__note">F1 = validation F1 Macro; Gap = train F1 − validation F1; Rec.&nbsp;N = recall on the
+          normal class.</p>
         </div>
 
-        <h3>B. Pan-Cancer Classification</h3>
-        <p>The multi-class model reaches accuracy 0.968 and F1 Macro 0.971 over 6,585 out-of-fold tumour samples
-        (Fig.&nbsp;1), confirming that the transcriptomic profile is highly specific to tumour type, consistent with
-        <a href="#r12">[12]</a>. The main off-diagonal cluster (LUAD–LUSC) reflects their shared histological
-        origin.</p>
+        <p>Out-of-fold errors for the two weakest cohorts differ in nature. In PRAD, 10 of 51 normal samples are
+        predicted as tumour (specificity 0.804) while only 9 of 500 tumours are missed (sensitivity 0.982); the false
+        positives reflect the limited representation of normal prostate tissue. In THCA errors are balanced—4 false
+        positives and 5 false negatives (specificity 0.931, sensitivity 0.990)—suggesting a well-placed decision
+        boundary despite the lower F1.</p>
+
+        <h3>B. Interpretable Decision Trees</h3>
+        <p>Trained on the top-50 Random Forest genes, Decision Trees retain F1 Macro between 0.785 and 0.959
+        (Table&nbsp;II), within five points of the Random Forest for most cohorts. On the illustrative hold-out split,
+        KIRC achieves near-perfect separation (0 false positives, 4 false negatives, accuracy 0.978), whereas PRAD
+        shows the highest false-negative count (13 missed tumours, accuracy 0.916), again pointing to class imbalance
+        that SMOTE mitigates but does not eliminate. Increasing <span class="mono">min_samples_leaf</span> from 50 to 100
+        lowers F1 slightly for most cohorts but raises PRAD from 0.757 to 0.785, confirming the benefit of regularisation
+        on the most imbalanced cohort.</p>
+
+        <div class="tbl">
+          <p class="tbl__cap">Table II<br><span>Decision Tree Performance (Top-50 Genes, 5-Fold GroupKFold)</span></p>
+          <table>
+            <thead><tr><th>Cohort</th><th>F1 Macro</th><th>Std</th></tr></thead>
+            <tbody>
+              <tr><td>LUSC</td><td>0.959</td><td>0.030</td></tr>
+              <tr><td>LUAD</td><td>0.947</td><td>0.037</td></tr>
+              <tr><td>BRCA</td><td>0.929</td><td>0.030</td></tr>
+              <tr><td>KIRC</td><td>0.927</td><td>0.035</td></tr>
+              <tr><td>THCA</td><td>0.889</td><td>0.041</td></tr>
+              <tr><td>STAD</td><td>0.818</td><td>0.040</td></tr>
+              <tr><td>PRAD</td><td>0.785</td><td>0.023</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>C. Pan-Cancer Classification</h3>
+        <p>The multi-class model reaches accuracy 0.968 and F1 Macro 0.971 (Fig.&nbsp;1). Every tumour type except the
+        two non-small-cell lung carcinomas reaches F1&nbsp;≥&nbsp;0.97; LUAD and LUSC reach 0.933 and 0.917. Their
+        confusion is asymmetric: 65 LUSC samples are predicted as LUAD and 37 in the opposite direction, consistent with
+        squamous-cell markers being more distinctive than adenocarcinoma markers. All other off-diagonal cells contain
+        at most 9 samples (&lt;&nbsp;1.7%).</p>
 
         <figure class="pfig">
           <img src="assets/thesis/pancancer-confusion.webp" alt="8x8 pan-cancer confusion matrix" width="1264" height="1179" loading="lazy">
           <figcaption><b>Fig. 1.</b> Pan-cancer 8×8 out-of-fold confusion matrix (N&nbsp;=&nbsp;6,585 tumour samples,
-          8 classes). Row-normalised colour indicates per-class recall.</figcaption>
+          8 classes). Colour is row-normalised recall; numbers are raw counts.</figcaption>
         </figure>
 
-        <h3>C. Biomarker Overlap</h3>
-        <p>No gene is shared across all seven tumour types, confirming tissue-specific transcriptomic signatures.
-        LUAD and LUSC share the highest pairwise overlap (23 of their top-50 genes), while KIRC and THCA are the most
-        tissue-specific (Fig.&nbsp;2).</p>
+        <h3>D. Selected Biomarkers and Cross-Cohort Overlap</h3>
+        <p>Each cohort yields a ranked list of genes by mean Gini importance; Fig.&nbsp;2 shows the top-50 for KIRC.
+        No gene appears in the top-50 of all seven cohorts, indicating highly specific transcriptomic signatures. LUAD
+        and LUSC share the most genes (23 of 50), while KIRC and THCA share very few with any other cohort, reflecting
+        distinct cellular origins (Fig.&nbsp;3). Hierarchical clustering on the top-20 genes separates tumour from
+        normal samples in all seven cohorts.</p>
+
+        <figure class="pfig pfig--narrow">
+          <img src="assets/thesis/rf-importance-kirc.webp" alt="Top-50 Random Forest genes for KIRC" width="1100" height="1318" loading="lazy">
+          <figcaption><b>Fig. 2.</b> Top-50 Random Forest biomarkers for kidney renal clear cell carcinoma (KIRC),
+          ranked by mean Gini decrease across five GroupKFold folds.</figcaption>
+        </figure>
 
         <figure class="pfig pfig--narrow">
           <img src="assets/thesis/biomarker-overlap.webp" alt="Shared top-50 biomarkers between cohorts" width="909" height="1394" loading="lazy">
-          <figcaption><b>Fig. 2.</b> Pairwise co-occurrence of top-50 Random Forest genes across the seven TCGA
-          cohorts.</figcaption>
+          <figcaption><b>Fig. 3.</b> Number of top-50 Random Forest genes shared between each pair of cohorts.</figcaption>
         </figure>
 
-        <h3>D. Interpretability</h3>
-        <p>SHAP validates the Random Forest importance ranking with biologically coherent directionality
-        (Fig.&nbsp;3). Pathway enrichment links the biomarkers to known cancer mechanisms: ECM remodelling (BRCA,
-        STAD), Wnt signalling (KIRC), cell-cycle G1/S regulation (LUSC), and “Prostate cancer” as the top KEGG term
-        for PRAD (adj.&nbsp;p&nbsp;=&nbsp;1.47×10<sup>−2</sup>).</p>
+        <h3>E. Interpretability and Biological Validation</h3>
+        <p>SHAP confirms the Random Forest ranking with coherent directionality: in BRCA, high expression of COL10A1
+        and MMP11 pushes predictions towards tumour, while high expression of genes such as SCARA5 and PDK4 pushes them
+        towards normal (Fig.&nbsp;4).</p>
 
         <figure class="pfig pfig--wide">
           <img src="assets/thesis/shap-brca.webp" alt="SHAP beeswarm plot, breast cancer, top 20 genes" width="1390" height="884" loading="lazy">
-          <figcaption><b>Fig. 3.</b> SHAP beeswarm plot (top-20 features) for breast cancer (BRCA): each dot is a
+          <figcaption><b>Fig. 4.</b> SHAP beeswarm plot (top-20 features) for breast cancer (BRCA): each dot is a
           sample, the horizontal axis is the SHAP value and colour encodes expression level.</figcaption>
         </figure>
 
-        <h3>E. Generalisation</h3>
-        <p>Training and validation curves converge by 60–70% of the data (Fig.&nbsp;4), ruling out severe
-        overfitting; permutation tests yield p&nbsp;&lt;&nbsp;0.01 for all tested cohorts. In the exploratory GTEx
-        setting, the tumour-vs.-healthy classifier reaches F1 Macro ≥&nbsp;0.990 and assigns healthy donors a mean
-        tumour probability below 4%.</p>
+        <p>Pathway enrichment links the biomarkers to known cancer mechanisms: ECM remodelling in BRCA and STAD, Wnt
+        signalling in KIRC, cell-cycle G1/S regulation in LUSC, and “Prostate cancer” as the top KEGG term for PRAD
+        (adj.&nbsp;p&nbsp;=&nbsp;1.47×10<sup>−2</sup>). For BRCA the strongest term is PPAR signalling (Fig.&nbsp;5).</p>
+
+        <figure class="pfig">
+          <img src="assets/thesis/kegg-brca.webp" alt="Top-10 KEGG pathways for BRCA biomarkers" width="1485" height="731" loading="lazy">
+          <figcaption><b>Fig. 5.</b> Top-10 KEGG pathway enrichment for BRCA biomarkers
+          (−log<sub>10</sub> adjusted p-value).</figcaption>
+        </figure>
+
+        <p>Hit rates against curated drivers are low, from 6% in KIRC (SFRP1, CA9, EGLN3) and 4% in BRCA (MMP11,
+        COL10A1) to 2% in LUAD, LUSC and THCA and 0% in PRAD and STAD. This is expected: COSMIC and Bailey et al.
+        catalogue mainly mutational drivers, whereas the Random Forest selects differential-expression biomarkers,
+        and the two categories are complementary rather than overlapping.</p>
+
+        <h3>F. Statistical Validation</h3>
+        <p>With shuffled labels, both tested cohorts collapse to chance level (F1&nbsp;≈&nbsp;0.49,
+        AUC&nbsp;≈&nbsp;0.50) and none of the 100 permutations approaches the real scores (Table&nbsp;III), so the
+        learned boundaries reflect real transcriptomic differences rather than memorisation. Training and validation
+        curves converge by 60–70% of the data (Fig.&nbsp;6); PRAD keeps high variance throughout because of normal-class
+        scarcity.</p>
+
+        <div class="tbl">
+          <p class="tbl__cap">Table III<br><span>Permutation Test (100 Label Shuffles)</span></p>
+          <table>
+            <thead><tr><th>Cohort</th><th>Real F1</th><th>Real AUC</th><th>Perm. F1</th><th>Perm. AUC</th><th>p</th></tr></thead>
+            <tbody>
+              <tr><td>LUAD</td><td>0.982</td><td>1.000</td><td>0.489</td><td>0.496</td><td>&lt;&nbsp;0.01</td></tr>
+              <tr><td>PRAD</td><td>0.895</td><td>0.971</td><td>0.487</td><td>0.500</td><td>&lt;&nbsp;0.01</td></tr>
+            </tbody>
+          </table>
+          <p class="tbl__note">Permuted values are means over 100 runs.</p>
+        </div>
 
         <figure class="pfig pfig--wide">
           <img src="assets/thesis/learning-curves.webp" alt="Learning curves for seven TCGA cohorts" width="1800" height="887" loading="lazy">
-          <figcaption><b>Fig. 4.</b> Learning curves (F1 Macro vs. training set size, 5-fold GroupKFold) for the
+          <figcaption><b>Fig. 6.</b> Learning curves (F1 Macro vs. training set size, 5-fold GroupKFold) for the
           seven cohorts.</figcaption>
         </figure>
 
+        <h3>G. Survival Analysis</h3>
+        <p>Stratifying patients by the top Random Forest gene separates survival significantly only in LUAD, where high
+        AGER expression is associated with longer overall survival (log-rank p&nbsp;=&nbsp;0.0053, Fig.&nbsp;7); in the
+        other cohorts the difference is not significant. This is consistent with genes selected for tumour-vs.-normal
+        discrimination not necessarily being prognostic.</p>
+
+        <figure class="pfig">
+          <img src="assets/thesis/km-luad.webp" alt="Kaplan-Meier curves for LUAD by AGER expression" width="1184" height="733" loading="lazy">
+          <figcaption><b>Fig. 7.</b> Kaplan–Meier overall survival for LUAD stratified by AGER expression (high
+          n&nbsp;=&nbsp;252, low n&nbsp;=&nbsp;251; log-rank p&nbsp;=&nbsp;0.0053). Shaded areas are 95% confidence
+          intervals.</figcaption>
+        </figure>
+
+        <p>DeepHit reaches C-index 0.717 in BRCA and 0.716 in KIRC, above the 0.70 threshold commonly considered
+        competitive for RNA-seq survival models, and lower values in LUAD, STAD and LUSC (Table&nbsp;IV). Triage
+        accuracy is markedly lower than the C-index: the three classes are strongly imbalanced, with most patients
+        surviving beyond five years, and mapping a ranking-optimised output onto fixed clinical thresholds introduces a
+        calibration artefact.</p>
+
+        <div class="tbl">
+          <p class="tbl__cap">Table IV<br><span>DeepHit Survival Prediction (5-Fold Out-of-Fold)</span></p>
+          <table>
+            <thead><tr><th>Cohort</th><th>Patients</th><th>Events</th><th>C-index</th></tr></thead>
+            <tbody>
+              <tr><td>BRCA</td><td>896</td><td>122</td><td>0.717</td></tr>
+              <tr><td>KIRC</td><td>525</td><td>172</td><td>0.716</td></tr>
+              <tr><td>LUAD</td><td>503</td><td>182</td><td>0.641</td></tr>
+              <tr><td>STAD</td><td>387</td><td>160</td><td>0.612</td></tr>
+              <tr><td>LUSC</td><td>491</td><td>210</td><td>0.539</td></tr>
+            </tbody>
+          </table>
+          <p class="tbl__note">PRAD and THCA excluded (&lt;&nbsp;50 confirmed deaths).</p>
+        </div>
+
+        <h3>H. Tumour vs. Healthy Tissue (GTEx)</h3>
+        <p>Against certified healthy donors, the classifier reaches F1 Macro between 0.990 and 0.998 in all six cohorts
+        (Table&nbsp;V). Healthy donors receive a mean tumour probability between 0.012 and 0.035; only nine of them are
+        classified as tumour—three in breast tissue and six in thyroid—and none in lung, prostate or stomach.</p>
+
+        <div class="tbl">
+          <p class="tbl__cap">Table V<br><span>Tumour vs. Healthy Classification Against GTEx v8</span></p>
+          <table>
+            <thead><tr><th>Cohort</th><th>GTEx tissue</th><th>F1</th><th>FP</th><th>Mean P(t)</th></tr></thead>
+            <tbody>
+              <tr><td>BRCA</td><td>Breast</td><td>0.994</td><td>3</td><td>0.018</td></tr>
+              <tr><td>LUAD</td><td>Lung</td><td>0.998</td><td>0</td><td>0.016</td></tr>
+              <tr><td>LUSC</td><td>Lung</td><td>0.997</td><td>0</td><td>0.012</td></tr>
+              <tr><td>PRAD</td><td>Prostate</td><td>0.997</td><td>0</td><td>0.035</td></tr>
+              <tr><td>STAD</td><td>Stomach</td><td>0.998</td><td>0</td><td>0.018</td></tr>
+              <tr><td>THCA</td><td>Thyroid</td><td>0.990</td><td>6</td><td>0.020</td></tr>
+            </tbody>
+          </table>
+          <p class="tbl__note">FP = healthy donors predicted as tumour; Mean P(t) = mean predicted tumour probability
+          for healthy donors.</p>
+        </div>
       </div>
+
+      <!-- ============================================================ -->
       <div class="cols">
-        <h2>IV. Conclusion</h2>
+        <h2>V. Discussion and Limitations</h2>
+        <p>Overfitting is controlled by three complementary mechanisms: patient-level GroupKFold eliminates leakage
+        between samples of the same individual, leaf-size regularisation prevents single-sample memorisation, and
+        permutation tests place real performance far above chance. Learning curves show that the weaker cohorts are
+        limited by data scarcity rather than memorisation.</p>
+        <p>Several limitations remain. Normal samples are scarce in TCGA, which caps the reliability of normal-class
+        estimates for PRAD and STAD. Adjacent normal tissue is not truly healthy, which motivates the GTEx extension;
+        however, that extension is exploratory. Its datasets are artificially balanced at 500 samples per class, its
+        features were selected on TCGA data before integration, and GTEx is used both to build the dataset and to
+        evaluate the model, so it is not an independent external validation in the strict sense; a separate healthy
+        cohort would be required. Finally, survival results are modest outside BRCA and KIRC, and most single-gene
+        Kaplan–Meier stratifications are not significant.</p>
+
+        <h2>VI. Conclusion and Future Work</h2>
         <p>TCGA RNA-seq data allows tumour vs. normal classification with F1 Macro 0.895–0.988 using decision-based
-        models under strict patient-level validation, and pan-cancer classification with accuracy 0.968. A natural
-        extension is graph-informed biomarker discovery, in which protein–protein interaction networks refine the
-        importance ranking towards functionally coherent gene sets.</p>
+        models under strict patient-level validation, interpretable Decision Trees retain F1 Macro 0.785–0.959, and
+        pan-cancer classification reaches accuracy 0.968. The selected biomarkers are tissue-specific, biologically
+        coherent under SHAP and pathway analysis, and complementary to mutational driver catalogues.</p>
+        <p>The current pipeline ranks genes individually without exploiting biological interaction networks. A natural
+        extension is graph-informed biomarker discovery: weighting importance scores by centrality in
+        protein–protein interaction graphs, learning topology-aware representations with graph attention networks,
+        or adding graph-Laplacian regularisation so that functionally connected genes receive similar coefficients.
+        Biomarkers selected under such constraints are more likely to belong to the same pathway or complex, increasing
+        interpretability and reducing the risk of statistically discriminative but functionally spurious features.</p>
 
         <h2 class="refs-h">References</h2>
         <ol class="refs">
@@ -200,6 +429,16 @@
           <li id="r10">F. Pedregosa et al., “Scikit-learn: Machine learning in Python,” <i>J. Mach. Learn. Res.</i>, vol. 12, pp. 2825–2830, 2011.</li>
           <li id="r11">G. Lemaître, F. Nogueira, and C. K. Aridas, “Imbalanced-learn: A Python toolbox to tackle the curse of imbalanced datasets in machine learning,” <i>J. Mach. Learn. Res.</i>, vol. 18, no. 17, pp. 1–5, 2017.</li>
           <li id="r12">K. A. Hoadley et al., “Cell-of-origin patterns dominate the molecular classification of 10,000 tumors from 33 types of cancer,” <i>Cell</i>, vol. 173, no. 2, pp. 291–304, 2018.</li>
+          <li id="r13">The Cancer Genome Atlas Network, “Comprehensive molecular portraits of human breast tumours,” <i>Nature</i>, vol. 490, no. 7418, pp. 61–70, 2012.</li>
+          <li id="r14">The Cancer Genome Atlas Research Network, “Comprehensive genomic characterization of squamous cell lung cancers,” <i>Nature</i>, vol. 489, no. 7417, pp. 519–525, 2012.</li>
+          <li id="r15">The Cancer Genome Atlas Research Network, “Comprehensive molecular profiling of lung adenocarcinoma,” <i>Nature</i>, vol. 511, no. 7511, pp. 543–550, 2014.</li>
+          <li id="r16">The Cancer Genome Atlas Research Network, “Comprehensive molecular characterization of clear cell renal cell carcinoma,” <i>Nature</i>, vol. 499, no. 7456, pp. 43–49, 2013.</li>
+          <li id="r17">The Cancer Genome Atlas Research Network, “Comprehensive molecular characterization of gastric adenocarcinoma,” <i>Nature</i>, vol. 513, no. 7517, pp. 202–209, 2014.</li>
+          <li id="r18">The Cancer Genome Atlas Research Network, “Integrated genomic characterization of papillary thyroid carcinoma,” <i>Cell</i>, vol. 159, no. 3, pp. 676–690, 2014.</li>
+          <li id="r19">The Cancer Genome Atlas Research Network, “The molecular taxonomy of primary prostate cancer,” <i>Cell</i>, vol. 163, no. 4, pp. 1011–1025, 2015.</li>
+          <li id="r20">R. L. Grossman et al., “Toward a shared vision for cancer genomic data,” <i>N. Engl. J. Med.</i>, vol. 375, no. 12, pp. 1109–1112, 2016.</li>
+          <li id="r21">D. P. Kingma and J. Ba, “Adam: A method for stochastic optimization,” in <i>Proc. ICLR</i>, 2015.</li>
+          <li id="r22">C. Lee, W. R. Zame, J. Yoon, and M. van der Schaar, “DeepHit: A deep learning approach to survival analysis with competing risks,” in <i>Proc. AAAI</i>, 2018, pp. 2314–2321.</li>
         </ol>
       </div>
     </article>

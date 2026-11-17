@@ -3,7 +3,7 @@
 
 window.SITE = {
   name: "Auda Kais",
-  headline: "I turn complex data into products people can use.",
+  headline: "Turning complex data into products people can use.",
   role: "Computer Science, M.Sc. · Machine learning · Data",
   city: "Rome, Italy",
   links: {
